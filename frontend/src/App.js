@@ -12,6 +12,7 @@ import AssessmentHistory from "@/pages/AssessmentHistory";
 import Referrals from "@/pages/Referrals";
 import Patients from "@/pages/Patients";
 import PatientDetail from "@/pages/PatientDetail";
+import PatientPedigree from "@/pages/PatientPedigree";
 import AdminCriteria from "@/pages/AdminCriteria";
 import AdminUsers from "@/pages/AdminUsers";
 import Metrics from "@/pages/Metrics";
@@ -45,6 +46,7 @@ function AppRoutes() {
         <Route path="/referrals" element={<Referrals />} />
         <Route path="/patients" element={<Patients />} />
         <Route path="/patients/:id" element={<PatientDetail />} />
+        <Route path="/patients/:id/pedigree" element={<PatientPedigree />} />
         <Route
           path="/admin/criteria"
           element={

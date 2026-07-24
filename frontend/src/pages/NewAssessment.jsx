@@ -20,6 +20,7 @@ export default function NewAssessment() {
   const [patientId, setPatientId] = useState("");
   const [values, setValues] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [hasPedigree, setHasPedigree] = useState(false);
 
   const schema = PATHWAY_FORMS[pathwayId];
   const Icon = PATHWAY_ICONS[pathwayId];
@@ -27,6 +28,16 @@ export default function NewAssessment() {
   useEffect(() => {
     api.get("/patients").then((r) => setPatients(r.data));
   }, []);
+
+  useEffect(() => {
+    if (!patientId) {
+      setHasPedigree(false);
+      return;
+    }
+    api.get(`/patients/${patientId}/pedigree`)
+      .then((r) => setHasPedigree((r.data?.members || []).some((m) => m.affected || m.age || (m.conditions || []).length)))
+      .catch(() => setHasPedigree(false));
+  }, [patientId]);
 
   const setValue = (k, v) => setValues((prev) => ({ ...prev, [k]: v }));
 
@@ -115,6 +126,12 @@ export default function NewAssessment() {
               <div className="mt-3 text-[11px] text-slate-500">
                 Assessment can be saved to a chart or run standalone.
               </div>
+              {patientId && hasPedigree && (
+                <div className="mt-3 rounded-md bg-blush border border-brand p-3 text-[12px] text-brand" data-testid="pedigree-hint">
+                  <div className="font-heading font-semibold">Pedigree on file</div>
+                  <div className="mt-0.5 leading-relaxed">Family history is auto-derived from the pedigree. Any fields you leave blank below will use the pedigree data.</div>
+                </div>
+              )}
             </CardContent>
           </Card>
           <div className="mt-6 flex flex-col gap-3">

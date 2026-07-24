@@ -1,0 +1,34 @@
+{
+  "summary": "Iteration 2 full backend + frontend regression. Backend: 40/40 pytest tests passed (13 new pedigree/email/derivation + 27 iter1 regression). Verified: empty pedigree scaffold, PUT upsert (owner + admin), 403 non-owner, 404 missing patient, hereditary_cancer pedigree-derived matches hc_two_plus_first_degree_breast + hc_ashkenazi_breast_ovarian with family_breast_cancer_first_degree_count=2 and pedigree_used=true, user override (fbfdc=5 wins), family_history first_degree routine escalating to urgent with reproductive_planning, carrier_screening cs_ashkenazi (requires ancestries=['ashkenazi']), hc_male_breast_family via paternal_uncle_aunt M+breast_cancer, GET /email/status returns {configured:false,from:''}, POST /assessments/{id}/email returns 503 with 'GMAIL_ADDRESS' in detail, all 6 standalone pathways unchanged. Frontend Playwright: /patients/:id/pedigree renders pedigree-svg with 7 shapes and 7 fixed-relation rows (paternal_grandfather..proband), add-sibling-btn adds a sibling and ped-affected+ped-cond-<id>-breast_cancer selects; save-pedigree-btn triggers 'Pedigree saved' toast. PatientDetail open-pedigree-btn navigates to /pedigree. AssessmentResult open-email-dialog-btn opens dialog showing 'Email is not configured yet' warning with send-email-btn disabled. NewAssessment patient-select for a patient with non-empty pedigree renders pedigree-hint block 'Pedigree on file'.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "EmailReferralDialog", "issues": ["Radix DialogContent missing aria-describedby / Description — a11y warning only, not user-visible"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_pedigree_email.py",
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_iter2.xml"
+  ],
+  "action_items": [
+    "(minor) Consider auto-injecting 'ashkenazi' into ancestries list when pedigree.ashkenazi_ancestry=true in pedigree.derive_features, so cs_ashkenazi triggers from the pedigree-level toggle alone. Currently users must also tick the Ashkenazi checkbox under 'Reported ancestries'. Present UI does emit both, so no user-visible break; documented as a defensive alignment.",
+    "(a11y) Add DialogDescription (or aria-describedby) to EmailReferralDialog DialogContent."
+  ],
+  "critical_code_review_comments": [
+    "pedigree.derive_features stores ashkenazi_ancestry bool AND ancestries list separately; decision_engine.evaluate_carrier only reads the ancestries list for cs_ashkenazi/cs_thalassemia. Mismatch is invisible today because the UI writes both fields, but a JSON-only client could set ashkenazi_ancestry=true without adding 'ashkenazi' to ancestries and lose the match.",
+    "email_sender.send_referral_email uses synchronous smtplib inside async endpoint — will block event loop while sending. Consider run_in_executor / asyncio.to_thread.",
+    "server.upsert_pedigree does not validate proband row exists nor that fixed-relation IDs are unique — malformed payloads with duplicate relations would persist as-is. Low risk since UI enforces via ensureFixed.",
+    "PedigreeEditor: two save buttons share the same testid family (save-pedigree-btn + save-pedigree-btn-bottom); acceptable but note both fire the same handler."
+  ],
+  "updated_files": ["/app/backend/tests/test_pedigree_email.py"],
+  "success_rate": {"backend": "100% (40/40)", "frontend": "100% (5/5 iteration-2 flows)"},
+  "test_credentials": "Bearer test_session_provider_001 (provider) and test_session_admin_001 (admin) — from /app/memory/test_credentials.md",
+  "seed_data_creation": "Provider patient pat_91e93d431568 (TEST_FT_PED) w/ pedigree (ashkenazi_ancestry=true, mother+breast_cancer) + assessment asm_e53bc2c2fb04 for email-dialog UI check. Tests also create TEST_PED_* and TEST_ADM_* patients per run.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Two backend test files under /app/backend/tests: backend_test.py (iter1 regression, 27 tests) and test_pedigree_email.py (iter2, 13 tests). Run `pytest /app/backend/tests/ -v`. Frontend auth via localStorage.setItem('session_token', <token>). GMAIL_ADDRESS/GMAIL_APP_PASSWORD are intentionally empty — the 503+not-configured dialog is expected behavior. When testing cs_ashkenazi via pedigree, remember to also set ancestries=['ashkenazi'] (not just the ashkenazi_ancestry bool).",
+  "rca of the issue": "n/a — no bugs found. One minor coverage gap flagged as action item."
+}

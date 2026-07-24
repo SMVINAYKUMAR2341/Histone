@@ -4,7 +4,7 @@ import { api } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, Plus, GitBranch } from "lucide-react";
 
 const OUTCOME_CLASS = {
   urgent: "result-urgent",
@@ -37,9 +37,19 @@ export default function PatientDetail() {
           <h1 className="font-heading font-bold text-4xl tracking-tight text-slate-900">{patient.initials}</h1>
           <div className="mt-2 text-sm text-slate-500 font-mono">DOB {patient.dob} · MRN {patient.mrn}</div>
         </div>
-        <Button data-testid="new-asm-for-patient-btn" onClick={() => nav("/dashboard")} className="bg-brand hover:bg-brand text-white">
-          <Plus className="w-4 h-4 mr-1.5" /> New assessment
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            data-testid="open-pedigree-btn"
+            variant="outline"
+            onClick={() => nav(`/patients/${id}/pedigree`)}
+            className="h-11"
+          >
+            <GitBranch className="w-4 h-4 mr-1.5" /> Pedigree
+          </Button>
+          <Button data-testid="new-asm-for-patient-btn" onClick={() => nav("/dashboard")} className="bg-brand hover:bg-brand text-white h-11">
+            <Plus className="w-4 h-4 mr-1.5" /> New assessment
+          </Button>
+        </div>
       </div>
 
       <div className="label-eyebrow mb-3">Assessment history</div>

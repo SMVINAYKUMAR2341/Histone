@@ -16,6 +16,8 @@ from datetime import datetime, timezone, timedelta
 from decision_engine import evaluate as evaluate_pathway
 from seed_criteria import SEED_CRITERIA, PATHWAY_META
 from pdf_gen import generate_referral_pdf
+from pedigree import derive_features as pedigree_derive, merge_with_input as pedigree_merge
+from email_sender import send_referral_email, is_configured as email_is_configured, EmailNotConfigured
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -313,6 +315,54 @@ async def get_patient(patient_id: str, user: User = Depends(get_current_user)):
     return p
 
 
+# ---------------- Pedigree ----------------
+class PedigreeMember(BaseModel):
+    id: str
+    relation: str
+    sex: Literal["M", "F", "U"] = "U"
+    label: Optional[str] = ""
+    age: Optional[int] = None
+    deceased: bool = False
+    age_at_death: Optional[int] = None
+    affected: bool = False
+    conditions: List[str] = []
+    age_at_diagnosis: Optional[int] = None
+    notes: str = ""
+
+
+class PedigreeIn(BaseModel):
+    ashkenazi_ancestry: bool = False
+    consanguinity: bool = False
+    ancestries: List[str] = []
+    members: List[PedigreeMember]
+
+
+@api.get("/patients/{patient_id}/pedigree")
+async def get_pedigree(patient_id: str, user: User = Depends(get_current_user)):
+    doc = await db.pedigrees.find_one({"patient_id": patient_id}, {"_id": 0})
+    if not doc:
+        return {"patient_id": patient_id, "ashkenazi_ancestry": False, "consanguinity": False,
+                "ancestries": [], "members": []}
+    return doc
+
+
+@api.put("/patients/{patient_id}/pedigree")
+async def upsert_pedigree(patient_id: str, payload: PedigreeIn, user: User = Depends(get_current_user)):
+    pat = await db.patients.find_one({"patient_id": patient_id}, {"_id": 0})
+    if not pat:
+        raise HTTPException(404, "Patient not found")
+    if user.role != "admin" and pat.get("created_by") != user.user_id:
+        raise HTTPException(403, "Forbidden")
+    data = payload.model_dump()
+    data["patient_id"] = patient_id
+    data["updated_at"] = now_utc()
+    data["updated_by"] = user.user_id
+    await db.pedigrees.update_one(
+        {"patient_id": patient_id}, {"$set": data}, upsert=True
+    )
+    return await db.pedigrees.find_one({"patient_id": patient_id}, {"_id": 0})
+
+
 # ---------------- Assessments ----------------
 class AssessmentIn(BaseModel):
     pathway_id: str
@@ -369,18 +419,31 @@ async def create_assessment(payload: AssessmentIn, user: User = Depends(get_curr
     criteria = await db.criteria.find(
         {"pathway_id": payload.pathway_id, "active": True, "approved": True}, {"_id": 0}
     ).to_list(500)
-    decision = evaluate_pathway(payload.pathway_id, payload.input_data, criteria)
+
+    # Merge pedigree-derived features when a patient is attached.
+    effective_input = dict(payload.input_data or {})
+    pedigree_used = False
+    if payload.patient_id:
+        ped = await db.pedigrees.find_one({"patient_id": payload.patient_id}, {"_id": 0})
+        if ped:
+            derived = pedigree_derive(ped)
+            effective_input = pedigree_merge(derived, payload.input_data or {})
+            pedigree_used = True
+
+    decision = evaluate_pathway(payload.pathway_id, effective_input, criteria)
 
     explanation = ""
     if payload.request_explanation:
-        explanation = await _generate_explanation(payload.pathway_id, decision, payload.input_data)
+        explanation = await _generate_explanation(payload.pathway_id, decision, effective_input)
 
     doc = {
         "assessment_id": f"asm_{uuid.uuid4().hex[:12]}",
         "pathway_id": payload.pathway_id,
         "patient_id": payload.patient_id,
         "provider_user_id": user.user_id,
-        "input_data": payload.input_data,
+        "input_data": effective_input,
+        "raw_input_data": payload.input_data,
+        "pedigree_used": pedigree_used,
         "outcome": decision["outcome"],
         "referral_target": decision["referral_target"],
         "matched_criteria": decision["matched_criteria"],
@@ -439,6 +502,110 @@ async def assessment_pdf(assessment_id: str, user: User = Depends(get_current_us
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="referral_{assessment_id}.pdf"'},
     )
+
+
+# ---------------- Email referral ----------------
+class EmailReferralIn(BaseModel):
+    to: str
+    cc: Optional[str] = None
+    subject: Optional[str] = None
+    note: Optional[str] = None
+
+
+@api.get("/email/status")
+async def email_status(user: User = Depends(get_current_user)):
+    return {"configured": email_is_configured(), "from": os.environ.get("GMAIL_ADDRESS", "")}
+
+
+@api.post("/assessments/{assessment_id}/email")
+async def email_assessment(
+    assessment_id: str,
+    payload: EmailReferralIn,
+    user: User = Depends(get_current_user),
+):
+    doc = await db.assessments.find_one({"assessment_id": assessment_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Assessment not found")
+    if user.role != "admin" and doc.get("provider_user_id") != user.user_id:
+        raise HTTPException(403, "Forbidden")
+    if not email_is_configured():
+        raise HTTPException(
+            503,
+            "Email is not configured. Ask admin to set GMAIL_ADDRESS and GMAIL_APP_PASSWORD in backend/.env "
+            "(create a Gmail App Password at https://myaccount.google.com/apppasswords).",
+        )
+
+    patient = None
+    if doc.get("patient_id"):
+        patient = await db.patients.find_one({"patient_id": doc["patient_id"]}, {"_id": 0})
+    pathway_name = PATHWAY_META.get(doc["pathway_id"], {}).get("name", doc["pathway_id"])
+    pdf_bytes = generate_referral_pdf(doc, patient, pathway_name)
+
+    outcome_label = {
+        "urgent": "URGENT",
+        "routine": "Routine",
+        "borderline": "Borderline",
+        "no_referral": "No referral needed",
+    }.get(doc["outcome"], doc["outcome"])
+
+    subject = payload.subject or f"[HistoNe · {outcome_label}] Genetics referral — {pathway_name}"
+    patient_line = (
+        f"Patient: {patient['initials']} · DOB {patient['dob']} · MRN {patient['mrn']}\n"
+        if patient else "Patient: (standalone assessment, no chart)\n"
+    )
+    body_lines = [
+        f"Referring provider: {user.name} <{user.email}>",
+        patient_line.strip(),
+        f"Pathway: {pathway_name}",
+        f"Recommendation: {outcome_label}",
+        f"Suggested target: {doc.get('referral_target', '-')}",
+        "",
+    ]
+    if doc.get("matched_criteria"):
+        body_lines.append("Matched criteria:")
+        for m in doc["matched_criteria"]:
+            body_lines.append(f"  · {m.get('label')} [{m.get('guideline_source')}]")
+        body_lines.append("")
+    if payload.note:
+        body_lines.append("Provider note:")
+        body_lines.append(payload.note)
+        body_lines.append("")
+    body_lines.append("Attached: full referral PDF with reasoning trail.")
+    body_lines.append("")
+    body_lines.append("— HistoNe Genetics DSS. Decision support only; clinical judgement required.")
+    body = "\n".join(body_lines)
+
+    try:
+        result = send_referral_email(
+            to_addr=payload.to,
+            subject=subject,
+            body=body,
+            pdf_bytes=pdf_bytes,
+            pdf_filename=f"referral_{assessment_id}.pdf",
+            cc=payload.cc,
+            reply_to=user.email,
+        )
+    except EmailNotConfigured as e:
+        raise HTTPException(503, str(e))
+    except Exception as e:
+        logger.exception("Email send failed")
+        raise HTTPException(502, f"Email send failed: {e}")
+
+    log_doc = {
+        "log_id": str(uuid.uuid4()),
+        "assessment_id": assessment_id,
+        "sent_by": user.user_id,
+        "to": payload.to,
+        "cc": payload.cc,
+        "subject": subject,
+        "sent_at": now_utc(),
+    }
+    await db.email_log.insert_one(log_doc)
+    await db.assessments.update_one(
+        {"assessment_id": assessment_id},
+        {"$set": {"referral_status": "sent", "referral_status_at": now_utc()}},
+    )
+    return {"ok": True, "to": payload.to, "cc": payload.cc, "subject": subject}
 
 
 # ---------------- Referrals tracking ----------------

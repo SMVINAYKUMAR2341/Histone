@@ -4,8 +4,9 @@ import { api, API } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Download, FileText, Save } from "lucide-react";
+import { ArrowLeft, Download, FileText, Mail, GitBranch } from "lucide-react";
 import { toast } from "sonner";
+import EmailReferralDialog from "@/components/EmailReferralDialog";
 
 const OUTCOME_LABEL = {
   urgent: "Refer — Urgent",
@@ -24,10 +25,12 @@ const OUTCOME_CLASS = {
 export default function AssessmentResult() {
   const { id } = useParams();
   const [asm, setAsm] = useState(null);
+  const [emailConfigured, setEmailConfigured] = useState(false);
   const nav = useNavigate();
 
   useEffect(() => {
     api.get(`/assessments/${id}`).then((r) => setAsm(r.data));
+    api.get(`/email/status`).then((r) => setEmailConfigured(!!r.data.configured)).catch(() => {});
   }, [id]);
 
   const downloadPdf = async () => {
@@ -149,6 +152,22 @@ export default function AssessmentResult() {
           >
             <Download className="w-4 h-4 mr-2" /> Download referral PDF
           </Button>
+          <EmailReferralDialog
+            assessmentId={id}
+            emailConfigured={emailConfigured}
+            defaultSubject=""
+            trigger={
+              <div className="w-full h-11 rounded-md border border-brand text-brand hover:bg-blush flex items-center justify-center gap-2 text-sm font-medium">
+                <Mail className="w-4 h-4" /> Email to clinic
+              </div>
+            }
+          />
+          {asm.pedigree_used && (
+            <div className="rounded-md border border-slate-200 bg-blush p-3 text-[12px] text-brand flex items-center gap-2">
+              <GitBranch className="w-3.5 h-3.5" />
+              <span className="font-heading font-semibold">Pedigree data used</span>
+            </div>
+          )}
           <Button
             data-testid="new-assessment-btn"
             onClick={() => nav("/dashboard")}
