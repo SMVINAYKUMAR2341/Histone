@@ -1,0 +1,102 @@
+{
+  "theme_strategy": "Light mode primary (standard for clinical environments to maximize legibility and minimize reflections), with a high-contrast dark mode toggle.",
+  "typography": {
+    "headings": "Work Sans",
+    "body": "IBM Plex Sans",
+    "notes": "CRITICAL: Do NOT use Inter, Roboto, Open Sans, or Lato. Use 'Work Sans' for clear, authoritative headings and 'IBM Plex Sans' for highly legible, dense tabular data in the body.",
+    "hierarchy": {
+      "h1": "text-4xl sm:text-5xl lg:text-5xl tracking-tight leading-none",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl tracking-tight",
+      "h3": "text-xl sm:text-2xl",
+      "h4": "text-lg sm:text-xl font-semibold",
+      "body": "text-base leading-relaxed text-slate-700 dark:text-slate-300",
+      "small_labels": "text-xs tracking-[0.2em] uppercase font-bold text-slate-500"
+    }
+  },
+  "colors": {
+    "archetype": "Swiss & High-Contrast (Adapted for Clinical UI)",
+    "primary": "#0f172a",
+    "primary_foreground": "#f8fafc",
+    "background": "#f8fafc",
+    "card": "#ffffff",
+    "semantic": {
+      "urgent_referral": "#e11d48",
+      "routine_referral": "#f59e0b",
+      "no_referral": "#10b981",
+      "warning_banner": "#f59e0b",
+      "warning_banner_text": "#78350f"
+    },
+    "forbidden_colors": [
+      "#1B93A4 (Teal Green/Blue is completely banned for this dashboard)",
+      "#7351B7"
+    ],
+    "notes": "Use 'Tinted Grey' - never pure #000000 or #808080. Tint neutrals with cool blue (slate). Avoid large gradients; rely on solid, high-contrast colors for clarity. Color is Function Only. 95% of the UI should be monochrome."
+  },
+  "surfaces_and_micro_themes": {
+    "cards": "Flat Solid surfaces. 1px crisp border (border-slate-200 dark:border-slate-800). Max 8px border-radius (rounded-md). NO heavy drop shadows, use shadow-sm sparingly.",
+    "headers": "Solid background with a hard bottom border. NEVER use transparent backgrounds without a blur/scrim.",
+    "glassmorphism": "FORBIDDEN for clinical apps. Flat solid surfaces prevent visual refraction of critical medical data.",
+    "banners": "Use high-contrast solid colors for the 'NOT YET CLINICALLY VALIDATED' banner. Should be unmistakable (e.g., Amber background with dark brown text, bold)."
+  },
+  "layouts_and_grids": {
+    "spacing": "Generous internal padding for cards (p-6 or p-8) to prevent text collision. Tight gaps (gap-4 or gap-6) between cards to maintain data density.",
+    "dashboard_mode": "High Density Grid. grid-cols-1 md:grid-cols-3 lg:grid-cols-4. Every pixel utilized. h-full on children.",
+    "pathway_selector": "Grid of 6 distinct clinical scenarios. grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6.",
+    "alignment": "Left-align dense clinical content, paragraphs, and inputs. Optical alignment over geometrical."
+  },
+  "components_strategy": {
+    "general": "Heavily customize Shadcn UI components. Strip the default 'Vercel-look'. Go cardless where possible or use rectangular, dense styles.",
+    "forms": "Use Shadcn Form, Input, Select, Checkbox. Dense layouts for clinical scenario forms (e.g., 3-gen pedigree-lite, NIPT lab fields).",
+    "date_picker": "Shadcn Calendar (Do not use raw HTML input type='date').",
+    "toast": "Use 'sonner' for toast notifications.",
+    "charts": "Shadcn chart components (recharts) for the Basic metrics dashboard.",
+    "tabs": "Override Shadcn tabs default h-9 with h-auto to prevent content cutoff."
+  },
+  "motion_and_interactions": {
+    "guidelines": "Minimalist. Use micro-interactions for hover/focus feedback. Do not use distracting heavy animations.",
+    "transitions": "Use specific transition properties (e.g., transition: transform 0.2s ease). NEVER use 'transition: all'.",
+    "accessibility": "MUST respect prefers-reduced-motion. Focus states must have HIGHER contrast than default state."
+  },
+  "accessibility": {
+    "contrast": "APCA guidelines preferred. Normal text min 4.5:1. Interactive elements min 3:1 against adjacent colors.",
+    "testing_attributes": "CRITICAL: All interactive and key informational elements MUST include a 'data-testid' attribute (e.g., data-testid='referral-submit-button').",
+    "state_visibility": "ALWAYS explicitly set text color on hover. E.g., hover:bg-slate-900 hover:text-white."
+  },
+  "visual_enhancers": {
+    "icons": "Use 'lucide-react' (default) or '@phosphor-icons/react' (dense dashboards). Keep icons purposeful, not merely decorative.",
+    "empty_states": "Clear, informative, no playful illustrations. Use clinical, straightforward messaging.",
+    "citations": "Ensure guideline sources (ACOG, NCCN, ACMG) are styled distinctly (e.g., muted text, small badge) to look like trustworthy references."
+  },
+  "media_and_images": {
+    "notes": "Medical app needs minimalistic imagery. Avatars for providers or patients.",
+    "image_urls": [
+      {
+        "url": "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzl8MHwxfHNlYXJjaHwxfHxkb2N0b3IlMjBwaHlzaWNpYW4lMjBwb3J0cmFpdCUyMGhvc3BpdGFsfGVufDB8fHx8MTc4NDg5MjkxNnww&ixlib=rb-4.1.0&q=85",
+        "description": "Male doctor in white dress shirt wearing glasses",
+        "category": "provider_avatar"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1584432810601-6c7f27d2362b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzl8MHwxfHNlYXJjaHw0fHxkb2N0b3IlMjBwaHlzaWNpYW4lMjBwb3J0cmFpdCUyMGhvc3BpdGFsfGVufDB8fHx8MTc4NDg5MjkxNnww&ixlib=rb-4.1.0&q=85",
+        "description": "Female doctor in white button up shirt with stethoscope",
+        "category": "provider_avatar"
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "You are building a clinical decision support tool, not a consumer app. It must look highly trustworthy, fast, and legible.",
+    "Result screen must be legible in under 5 seconds. Use massive, undeniable typography for the final decision (No Referral, Routine, Urgent) and color-code appropriately.",
+    "Frame everything as decision support, never a definitive diagnosis. Prominently display 'NOT YET CLINICALLY VALIDATED' on placeholder criteria.",
+    "Do NOT use HTML-based components for advanced user interactions. Rely entirely on Shadcn.",
+    "Include 'data-testid' on every button, link, form input, and status result.",
+    "Use solid background colors for cards and headers. Glassmorphism is banned to ensure peak readability of medical data.",
+    "Ensure guideline citations (ACOG, NCCN, ACMG) are attached to every decision rule displayed."
+  ],
+  "universal_guidelines_for_main_agent": [
+    "You tend to converge toward generic, 'on distribution' outputs. Avoid the 'AI slop' aesthetic. Make it clinical but uniquely sharp and well-structured.",
+    "Do NOT center align the main app container (no .App { text-align: center; }). Keep text naturally flowing left-aligned for readability.",
+    "Never use AI assistant Emojis for icons.",
+    "Use 2-3x more spacing inside containers than default to avoid cramped, cheap looks, but use tight gaps between widgets for density.",
+    "Never use 'transition: all'. Explicitly state transitions.",
+    "Ensure 'sonner' is used for all toasts."
+  ]
+}
