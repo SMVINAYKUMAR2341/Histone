@@ -65,6 +65,11 @@ def derive_features(pedigree: dict | None) -> Dict[str, Any]:
         # Family history pathway
         "multiple_affected": total_affected >= 2,
     }
+    # Defensive: if pedigree-level ashkenazi_ancestry toggle is on but the
+    # ancestries list doesn't include 'ashkenazi', add it so carrier-screening
+    # rules that read the ancestries list still fire.
+    if out["ashkenazi_ancestry"] and "ashkenazi" not in out["ancestries"]:
+        out["ancestries"] = [*out["ancestries"], "ashkenazi"]
     if closest:
         out["closest_affected_degree"] = closest
     return out

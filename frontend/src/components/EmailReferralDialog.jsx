@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,6 +45,9 @@ export default function EmailReferralDialog({ assessmentId, emailConfigured, def
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Email referral PDF</DialogTitle>
+            <DialogDescription>
+              Sends the referral summary PDF as an attachment to the target clinic.
+            </DialogDescription>
           </DialogHeader>
           {!emailConfigured ? (
             <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">

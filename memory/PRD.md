@@ -43,6 +43,17 @@ under 2 minutes. Every decision must cite its source guideline.
 - HistoNe rebrand: magenta primary (#b9207a), cream logo, blush accents. Clinical urgency red/amber/green retained.
 - Testing: 27/27 backend tests, 6/6 frontend flows pass (iteration_1).
 
+## Implemented (v1.1 — Feb 2026)
+- **Multigenerational pedigree editor** at `/patients/:id/pedigree` — structured form (4 grandparents / 2 parents / proband + variable siblings, children, aunts, uncles) with live SVG canvas visualization (male=square, female=circle, magenta fill=affected, X=deceased, "P" tag=proband).
+- Pedigree-level toggles: Ashkenazi ancestry, consanguinity, ancestries list.
+- Pedigree auto-derives features for ALL 6 pathways (family cancer counts, male breast in family, closest affected degree, multiple affected, ancestries). Defensive: Ashkenazi toggle auto-adds to ancestries so carrier-screening rules always fire.
+- User input on the assessment form overrides derived features when explicitly set.
+- `pedigree_used=true` flag on assessment doc; shown as badge on result screen.
+- **Email referral PDFs directly to clinics** via Gmail SMTP + App Password (`GMAIL_ADDRESS` + `GMAIL_APP_PASSWORD` in `backend/.env`). Endpoint returns 503 with configuration hint when unset.
+- Email dialog on result page with To / Cc / Subject / Note; auto-generates subject `[HistoNe · URGENT] Genetics referral — <pathway>`; sets `Reply-To` to referring provider.
+- After a successful send, the assessment's referral_status auto-flips to `sent` and an entry is written to `email_log`.
+- Testing: 40/40 backend + 5/5 frontend flows pass (iteration_2).
+
 ## Explicitly out of v1
 - Patient-facing app / portal
 - Live EHR / scheduling integration
